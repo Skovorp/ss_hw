@@ -27,11 +27,9 @@
       "num_workers": 0,
       "datasets": [
         {
-          "type": "LibrispeechDataset",
+          "type": "CustomDirSSDataset",
           "args": {
-            "part": "dev-clean",
-            "max_audio_length": 20.0,
-            "max_text_length": 200,
+            "path": "/home/ubuntu/ss_hw/data/datasets/mixed_librispeech/train-clean-100",
             "limit": 10
           }
         }
@@ -42,11 +40,9 @@
       "num_workers": 0,
       "datasets": [
         {
-          "type": "LibrispeechDataset",
+          "type": "CustomDirSSDataset",
           "args": {
-            "part": "dev-clean",
-            "max_audio_length": 20.0,
-            "max_text_length": 200,
+            "path": "/home/ubuntu/ss_hw/data/datasets/mixed_librispeech/test-clean",
             "limit": 10
           }
         }
@@ -95,7 +91,7 @@
     "monitor": "min val_loss",
     "early_stop": 100,
     "visualize": "wandb",
-    "wandb_project": "asr_project",
+    "wandb_project": "ss_project",
     "len_epoch": 100,
     "grad_norm_clip": 10
   }

@@ -27,10 +27,12 @@ def main(config):
     logger = config.get_logger("train")
 
     # text_encoder
-    text_encoder = config.get_text_encoder()
+    # text_encoder = config.get_text_encoder()
 
     # setup data_loader instances
-    dataloaders = get_dataloaders(config, text_encoder)
+    dataloaders = get_dataloaders(config)
+    print(next(iter(dataloaders['train'])))
+    print(next(iter(dataloaders['val'])))
 
     # build model architecture, then print to console
     model = config.init_obj(config["arch"], module_arch, n_class=len(text_encoder))
@@ -104,4 +106,5 @@ if __name__ == "__main__":
         ),
     ]
     config = ConfigParser.from_args(args, options)
+    print(config._config)
     main(config)
