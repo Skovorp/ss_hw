@@ -1,6 +1,6 @@
 import logging
 import random
-from typing import List
+from typing import List, Dict
 
 import numpy as np
 import torch
@@ -33,7 +33,9 @@ class CustomDirSSDataset(Dataset):
         index = self._get_or_load_index(path)
         index = self._cut_index(index, limit)
         self._assert_index_is_valid(index)
-        self._index: List[dict] = index
+        self.all_speakers = self.get_all_speakers(index)
+
+        self._index: List[Dict] = index
 
     @staticmethod
     def _cut_index(index, limit):
@@ -45,19 +47,26 @@ class CustomDirSSDataset(Dataset):
             return index[:limit]
 
     def __getitem__(self, ind):
-        audio_paths = self._index[ind]
+        ind_res = self._index[ind]
+        audio_paths = {
+            'mix': ind_res['mix'],
+            'refs': ind_res['mix'],
+            'targets': ind_res['targets'],
+        }
         audio_waves = self.load_audios(audio_paths)
         audio_waves, audio_specs = self.process_waves(audio_waves)
         return {
             "audios": audio_waves,
             "spectrograms": audio_specs,
             "audio_paths": audio_paths,
+            "speaker_id": self.all_speakers.index(ind_res['original_speaker_id']),
+            'original_speaker_id': ind_res['original_speaker_id'],
         }
 
     def __len__(self):
         return len(self._index)
 
-    def load_audios(self, paths: dict[str, str]):
+    def load_audios(self, paths: Dict[str, str]):
         res = {}
         for key, path in paths.items():
             audio_tensor, sr = torchaudio.load(path)
@@ -68,7 +77,7 @@ class CustomDirSSDataset(Dataset):
             res[key] = audio_tensor
         return res
 
-    def process_waves(self, audio_tensor_waves: dict[str, torch.tensor]):
+    def process_waves(self, audio_tensor_waves: Dict[str, torch.tensor]):
         res_waves = {}
         res_specs = {}
         for key, audio_tensor_wave in audio_tensor_waves.items():
@@ -95,7 +104,10 @@ class CustomDirSSDataset(Dataset):
             assert 'mix' in entry, 'no mix'
             assert 'refs' in entry, 'no refs'
             assert 'targets' in entry, 'no targets'
+            assert 'original_speaker_id' in entry, 'no speaker_orig_id'
 
+    def get_all_speakers(self, index):
+        return list(set([el['original_speaker_id'] for el in index]))
 
     def _get_or_load_index(self, path):
         index_path = os.path.join(path, "index.json")
@@ -124,9 +136,11 @@ class CustomDirSSDataset(Dataset):
 
         index = []
         for i in range(len(mix_files)):
+            original_speaker_id = refs_files[i].split('_')[0]
             index.append({
                 'mix': os.path.join(path, 'mix', mix_files[i]),
                 'refs': os.path.join(path, 'refs', refs_files[i]),
                 'targets': os.path.join(path, 'targets', targets_files[i]),
+                'original_speaker_id': original_speaker_id,
             })
         return index

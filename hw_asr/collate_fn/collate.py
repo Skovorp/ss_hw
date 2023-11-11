@@ -11,11 +11,13 @@ def collate_fn(dataset_items: List[dict]):
     Collate and pad fields in dataset items
     """
 
-    # 'audios', 'spectrograms', 'audio_paths'
+    # 'audios', 'spectrograms', 'audio_paths', speaker_id, original_speaker_id
     result_batch = {
         'audios': {'mix': [], 'refs': [], 'targets': []},
         'spectrograms': {'mix': [], 'refs': [], 'targets': []},
         'audio_paths': {'mix': [], 'refs': [], 'targets': []},
+        'speaker_ids': [],
+        'original_speaker_ids': [],
     }
 
     max_spectrogram_len = {
@@ -32,6 +34,8 @@ def collate_fn(dataset_items: List[dict]):
 
 
     for item in dataset_items:
+        result_batch['speaker_ids'].append(item['speaker_id'])
+        result_batch['original_speaker_ids'].append(item['original_speaker_id'])
         for key in ['mix', 'refs', 'targets']:
             spectrogram_pad = (0, max_spectrogram_len[key] - item['spectrograms'][key].size(2))
             result_batch['spectrograms'][key].append(F.pad(item['spectrograms'][key], spectrogram_pad, 'constant', 0))
