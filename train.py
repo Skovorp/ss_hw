@@ -26,16 +26,12 @@ np.random.seed(SEED)
 def main(config):
     logger = config.get_logger("train")
 
-    # text_encoder
-    # text_encoder = config.get_text_encoder()
-
     # setup data_loader instances
     dataloaders = get_dataloaders(config)
-    print(next(iter(dataloaders['train'])))
-    print(next(iter(dataloaders['val'])))
 
     # build model architecture, then print to console
-    model = config.init_obj(config["arch"], module_arch, n_class=len(text_encoder))
+    n_train_speakers = len(dataloaders['train'].dataset.all_speakers)
+    model = config.init_obj(config["arch"], module_arch, n_train_speakers=n_train_speakers)
     logger.info(model)
 
     # prepare for (multi-device) GPU training
@@ -47,7 +43,7 @@ def main(config):
     # get function handles of loss and metrics
     loss_module = config.init_obj(config["loss"], module_loss).to(device)
     metrics = [
-        config.init_obj(metric_dict, module_metric, text_encoder=text_encoder)
+        config.init_obj(metric_dict, module_metric)
         for metric_dict in config["metrics"]
     ]
 
@@ -62,7 +58,6 @@ def main(config):
         loss_module,
         metrics,
         optimizer,
-        text_encoder=text_encoder,
         config=config,
         device=device,
         dataloaders=dataloaders,
@@ -106,5 +101,4 @@ if __name__ == "__main__":
         ),
     ]
     config = ConfigParser.from_args(args, options)
-    print(config._config)
     main(config)

@@ -31,14 +31,12 @@ class Trainer(BaseTrainer):
             config,
             device,
             dataloaders,
-            text_encoder,
             lr_scheduler=None,
             len_epoch=None,
             skip_oom=True,
     ):
         super().__init__(model, criterion, metrics, optimizer, config, device)
         self.skip_oom = skip_oom
-        self.text_encoder = text_encoder
         self.config = config
         self.train_dataloader = dataloaders["train"]
         if len_epoch is None:
@@ -64,9 +62,13 @@ class Trainer(BaseTrainer):
         """
         Move all necessary tensors to the HPU
         """
-        for tensor_for_gpu in ["spectrogram", "text_encoded"]:
-            batch[tensor_for_gpu] = batch[tensor_for_gpu].to(device)
+        batch['audios']['mix'] = batch['audios']['mix'].to(device)
+        batch['audios']['refs'] = batch['audios']['refs'].to(device)
+        batch['audios']['targets'] = batch['audios']['targets'].to(device)
+        batch['speaker_ids'] = batch['speaker_ids'].to(device)
+
         return batch
+
 
     def _clip_grad_norm(self):
         if self.config["trainer"].get("grad_norm_clip", None) is not None:
@@ -114,9 +116,9 @@ class Trainer(BaseTrainer):
                 self.writer.add_scalar(
                     "learning rate", self.lr_scheduler.get_last_lr()[0]
                 )
-                self._log_predictions(**batch)
-                self._log_spectrogram(batch["spectrogram"])
-                self._log_scalars(self.train_metrics)
+                # self._log_predictions(**batch)
+                # self._log_spectrogram(batch["spectrogram"])
+                # self._log_scalars(self.train_metrics) 
                 # we don't want to reset train metrics at the start of every epoch
                 # because we are interested in recent train metrics
                 last_train_metrics = self.train_metrics.result()
@@ -125,9 +127,9 @@ class Trainer(BaseTrainer):
                 break
         log = last_train_metrics
 
-        for part, dataloader in self.evaluation_dataloaders.items():
-            val_log = self._evaluation_epoch(epoch, part, dataloader)
-            log.update(**{f"{part}_{name}": value for name, value in val_log.items()})
+        # for part, dataloader in self.evaluation_dataloaders.items():
+        #     val_log = self._evaluation_epoch(epoch, part, dataloader)
+        #     log.update(**{f"{part}_{name}": value for name, value in val_log.items()})
 
         return log
 
@@ -135,16 +137,16 @@ class Trainer(BaseTrainer):
         batch = self.move_batch_to_device(batch, self.device)
         if is_train:
             self.optimizer.zero_grad()
-        outputs = self.model(**batch)
-        if type(outputs) is dict:
+            outputs = self.model(**batch, predict_speaker=True)
             batch.update(outputs)
         else:
-            batch["logits"] = outputs
+            outputs = self.model(**batch, predict_speaker=False)
+            batch.update(outputs)
 
-        batch["log_probs"] = F.log_softmax(batch["logits"], dim=-1)
-        batch["log_probs_length"] = self.model.transform_input_lengths(
-            batch["spectrogram_length"]
-        )
+        # batch["log_probs"] = F.log_softmax(batch["logits"], dim=-1)
+        # batch["log_probs_length"] = self.model.transform_input_lengths(
+        #     batch["spectrogram_length"]
+        # )
         batch["loss"] = self.criterion(**batch)
         if is_train:
             batch["loss"].backward()

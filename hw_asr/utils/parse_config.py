@@ -50,6 +50,11 @@ class ConfigParser:
         # configure logging module
         setup_logging(self.log_dir)
         self.log_levels = {0: logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}
+    
+    @classmethod
+    def from_path(cls, config_path):
+        config = read_json(config_path)
+        return cls(config)
 
     @classmethod
     def from_args(cls, args, options=""):

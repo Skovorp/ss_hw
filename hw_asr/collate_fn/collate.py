@@ -48,5 +48,6 @@ def collate_fn(dataset_items: List[dict]):
     for key in ['mix', 'refs', 'targets']:
         result_batch['spectrograms'][key] = torch.stack(result_batch['spectrograms'][key])
         result_batch['audios'][key] = torch.stack(result_batch['audios'][key])
+    result_batch['speaker_ids'] = torch.LongTensor(result_batch['speaker_ids'])
 
     return result_batch

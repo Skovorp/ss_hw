@@ -31,9 +31,9 @@ class CustomDirSSDataset(Dataset):
         self.log_spec = config_parser["preprocessing"]["log_spec"]
 
         index = self._get_or_load_index(path)
-        index = self._cut_index(index, limit)
         self._assert_index_is_valid(index)
         self.all_speakers = self.get_all_speakers(index)
+        index = self._cut_index(index, limit)
 
         self._index: List[Dict] = index
 
