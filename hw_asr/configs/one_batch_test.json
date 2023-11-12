@@ -24,7 +24,9 @@
         "long_len": 320
       },
       "resnet_params": {
-        "n": 1
+        "n": 1,
+        "resnet_input_channels": 256,
+        "resnet_hidden_channels": 512
       },
       "tcn_params": {
         "n": 1
