@@ -19,3 +19,6 @@ pillow
 librosa
 soundfile
 pyloudnorm
+torchmetrics
+pesq
+python-dotenv

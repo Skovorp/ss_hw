@@ -22,14 +22,25 @@ logger = config.get_logger("train")
 # setup data_loader instances
 dataloaders = get_dataloaders(config)
 n_train_speakers = len(dataloaders['train'].dataset.all_speakers)
-b = next(iter(dataloaders['train']))
-print(b)
+device = torch.device("cuda")
+model = config.init_obj(config["arch"], module_arch, n_train_speakers=n_train_speakers).to(device)
 
-# build model architecture, then print to console
-model = config.init_obj(config["arch"], module_arch, n_train_speakers=n_train_speakers)
-res = model(**b, predict_speaker=True)
 
-criterion = nn.CrossEntropyLoss()
+def move_batch_to_device(batch, device: torch.device):
+    """
+    Move all necessary tensors to the HPU
+    """
+    batch['audios']['mix'] = batch['audios']['mix'].to(device)
+    batch['audios']['refs'] = batch['audios']['refs'].to(device)
+    batch['audios']['targets'] = batch['audios']['targets'].to(device)
+    batch['speaker_ids'] = batch['speaker_ids'].to(device)
 
-loss = criterion(res['speaker_logits'], b['speaker_ids'])
-print(loss)
+    return batch
+
+print("starting loop")
+for i, b in enumerate(dataloaders['val']):
+    if i <= 18:
+        continue
+    print(i)
+    b = move_batch_to_device(b, device)
+    res = model(**b, predict_speaker=False)

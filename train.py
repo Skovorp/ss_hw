@@ -22,6 +22,9 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 np.random.seed(SEED)
 
+from dotenv import load_dotenv
+load_dotenv()
+
 
 def main(config):
     logger = config.get_logger("train")

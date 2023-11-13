@@ -1,5 +1,5 @@
 {
-  "name": "one_batch_test",
+  "name": "traing config",
   "n_gpu": 1,
   "preprocessing": {
     "sr": 16000,
@@ -24,12 +24,15 @@
         "long_len": 320
       },
       "resnet_params": {
-        "n": 1,
+        "n": 2,
         "resnet_input_channels": 256,
         "resnet_hidden_channels": 512
       },
       "tcn_params": {
-        "n": 1
+        "n_stacks": 4,
+        "blocks_in_stack": 4,
+        "tcn_input_channels": 256,
+        "tch_hidden_channels": 512
       }
     }
   },
@@ -41,8 +44,7 @@
         {
           "type": "CustomDirSSDataset",
           "args": {
-            "path": "/home/ubuntu/ss_hw/data/datasets/mixed_librispeech/train-clean-100",
-            "limit": 10
+            "path": "/home/ubuntu/ss_hw/data/datasets/mixed_librispeech/train-clean-100"
           }
         }
       ]
@@ -54,35 +56,44 @@
         {
           "type": "CustomDirSSDataset",
           "args": {
-            "path": "/home/ubuntu/ss_hw/data/datasets/mixed_librispeech/test-clean",
-            "limit": 10
+            "path": "/home/ubuntu/ss_hw/data/datasets/mixed_librispeech/test-clean"
           }
         }
       ]
     }
   },
   "optimizer": {
-    "type": "SGD",
+    "type": "Adam",
     "args": {
-      "lr": 1e-2
+      "lr": 1e-3
     }
   },
   "loss": {
-    "type": "SpeakerCrossEntropyLoss",
-    "args": {}
+    "type": "MixedLoss",
+    "args": {
+      "alpha": 0.1,
+      "beta": 0.1,
+      "gamma": 0.5
+    }
   },
   "metrics": [
     {
       "type": "SpeakerAccuracyMetric",
       "args": {
-        "name": "Speaker accuracy"
+        "name": "speaker acc"
+      }
+    },
+    {
+      "type": "SiSdrMetric",
+      "args": {
+        "name": "si_sdr"
       }
     }
   ],
   "lr_scheduler": {
     "type": "OneCycleLR",
     "args": {
-      "steps_per_epoch": 100,
+      "steps_per_epoch": 500,
       "epochs": 50,
       "anneal_strategy": "cos",
       "max_lr": 1e-2,
@@ -90,15 +101,15 @@
     }
   },
   "trainer": {
-    "epochs": 50,
+    "epochs": 5000,
     "save_dir": "saved/",
     "save_period": 5,
     "verbosity": 2,
-    "monitor": "min val_loss",
-    "early_stop": 100,
+    "monitor": "min val_si_sdr",
+    "early_stop": 100000000,
     "visualize": "wandb",
     "wandb_project": "ss_project",
-    "len_epoch": 100,
+    "len_epoch": 500,
     "grad_norm_clip": 10
   }
 }
