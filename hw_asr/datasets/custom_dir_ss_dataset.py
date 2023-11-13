@@ -136,7 +136,9 @@ class CustomDirSSDataset(Dataset):
 
         index = []
         for i in range(len(mix_files)):
-            original_speaker_id = refs_files[i].split('_')[0]
+            original_speaker_id = refs_files[i].split('_')[0] if len(refs_files[i].split('_')) > 0 else 0
+            if not original_speaker_id.isnumeric():
+                original_speaker_id = 0
             index.append({
                 'mix': os.path.join(path, 'mix', mix_files[i]),
                 'refs': os.path.join(path, 'refs', refs_files[i]),
