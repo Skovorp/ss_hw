@@ -170,7 +170,7 @@ class MySpExModel(nn.Module):
             res['speaker_logits'] = self.proj_speaker(speaker_emb)
 
         extracted = self.speaker_extractor(mix_encoded, speaker_emb)
-        s1, s2, s3 = self.decode(extracted, y1, y2, y3)
+        s1, s2, s3 = self.decode(extracted, y1, y2, y3, audios['mix'].shape[-1])
         res['s1'] = s1
         res['s2'] = s2
         res['s3'] = s3
@@ -181,12 +181,20 @@ class MySpExModel(nn.Module):
         return res
 
     def forward_encoder(self, wave, return_separate=False):
-        padded_for_medium = F.pad(wave, (0, self.encoder_params['medium_len'] - self.encoder_params['short_len']))
-        padded_for_long = F.pad(wave, (0, self.encoder_params['long_len'] - self.encoder_params['short_len']))
+        # this padding makes me want to kill my self
+        padded_for_short = F.pad(wave, (0, self.encoder_params['short_len'] // 2))
+        short = self.short_encoder(padded_for_short)   # (batch, encoder_feature_dim, shorter_len)
 
-        short = self.short_encoder(wave)   # (batch, encoder_feature_dim, shorter_len)
+        len_orig = wave.shape[-1]
+        len_inp_medium = (short.shape[-1] - 1) * (self.encoder_params['short_len'] // 2) + self.encoder_params['medium_len']
+        len_inp_long = (short.shape[-1] - 1) * (self.encoder_params['short_len'] // 2) + self.encoder_params['long_len']
+
+        padded_for_medium = F.pad(wave, (0, len_inp_medium - len_orig))
+        padded_for_long = F.pad(wave, (0, len_inp_long - len_orig))
+
         medium = self.medium_encoder(padded_for_medium) # (batch, encoder_feature_dim, shorter_len)
         long = self.long_encoder(padded_for_long)     # (batch, encoder_feature_dim, shorter_len)
+
         cat_emb = torch.cat([short, medium, long], 1) # (batch, 3 * encoder_feature_dim, shorter_len)
 
         if return_separate:
@@ -206,18 +214,18 @@ class MySpExModel(nn.Module):
             encoded = tcn(encoded, speaker_emb)
         return encoded
     
-    def decode(self, x, y1, y2, y3):
+    def decode(self, x, y1, y2, y3, original_len):
         short = F.relu(self.decoder_conv_short(x)) * y1
         medium = F.relu(self.decoder_conv_medium(x)) * y2
         long = F.relu(self.decoder_conv_long(x)) * y3
 
-        # print("y1.shape", y1.shape)
-        # print("y2.shape", y2.shape)
-        # print("y3.shape", y3.shape)
+        print("y1.shape", y1.shape)
+        print("y2.shape", y2.shape)
+        print("y3.shape", y3.shape)
 
-        short = self.deconv_short(short)
-        medium = self.deconv_medium(medium)[:, :, :short.shape[2]]
-        long = self.deconv_long(long)[:, :, :short.shape[2]]
+        short = self.deconv_short(short)[:, :, :original_len]
+        medium = self.deconv_medium(medium)[:, :, :original_len]
+        long = self.deconv_long(long)[:, :, :original_len]
         return short, medium, long
 
     def __str__(self):

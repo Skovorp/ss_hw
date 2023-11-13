@@ -18,28 +18,28 @@
     "type": "MySpExModel",
     "args": {
       "encoder_params": {
-        "feature_dim": 256,
-        "short_len": 40,
-        "medium_len": 160,
-        "long_len": 320
+        "feature_dim": 251,
+        "short_len": 35,
+        "medium_len": 153,
+        "long_len": 329
       },
       "resnet_params": {
         "n": 2,
-        "resnet_input_channels": 256,
-        "resnet_hidden_channels": 512
+        "resnet_input_channels": 241,
+        "resnet_hidden_channels": 513
       },
       "tcn_params": {
         "n_stacks": 4,
         "blocks_in_stack": 4,
-        "tcn_input_channels": 256,
-        "tch_hidden_channels": 512
+        "tcn_input_channels": 228,
+        "tch_hidden_channels": 555
       }
     }
   },
   "data": {
     "train": {
       "batch_size": 10,
-      "num_workers": 0,
+      "num_workers": 4,
       "datasets": [
         {
           "type": "CustomDirSSDataset",
@@ -51,7 +51,7 @@
     },
     "val": {
       "batch_size": 10,
-      "num_workers": 0,
+      "num_workers": 4,
       "datasets": [
         {
           "type": "CustomDirSSDataset",

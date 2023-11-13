@@ -15,16 +15,11 @@ from hw_asr.utils import prepare_device
 from hw_asr.utils.object_loading import get_dataloaders
 from hw_asr.utils.parse_config import ConfigParser
 
-
-config = ConfigParser.from_path('/home/ubuntu/ss_hw/hw_asr/configs/one_batch_test.json')
-logger = config.get_logger("train")
-
-# setup data_loader instances
-dataloaders = get_dataloaders(config)
-n_train_speakers = len(dataloaders['train'].dataset.all_speakers)
-device = torch.device("cuda")
-model = config.init_obj(config["arch"], module_arch, n_train_speakers=n_train_speakers).to(device)
-
+SEED = 123
+torch.manual_seed(SEED)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+np.random.seed(SEED)
 
 def move_batch_to_device(batch, device: torch.device):
     """
@@ -37,10 +32,44 @@ def move_batch_to_device(batch, device: torch.device):
 
     return batch
 
-print("starting loop")
-for i, b in enumerate(dataloaders['val']):
-    if i <= 18:
-        continue
-    print(i)
-    b = move_batch_to_device(b, device)
-    res = model(**b, predict_speaker=False)
+config = ConfigParser.from_path('/home/ubuntu/ss_hw/hw_asr/configs/one_batch_test.json')
+# logger = config.get_logger("train")
+torch.cuda.empty_cache()
+# setup data_loader instances
+dataloaders = get_dataloaders(config)
+n_train_speakers = len(dataloaders['train'].dataset.all_speakers)
+device = torch.device("cuda")
+model = config.init_obj(config["arch"], module_arch, n_train_speakers=n_train_speakers).to(device)
+
+
+# for i, b in enumerate(dataloaders['val']):
+#     if i <= 77:
+#         continue
+#     print('les gooooo')
+#     with torch.no_grad():
+#         b = move_batch_to_device(b, device)
+#         print("refs shape", b['audios']['refs'].shape)
+#         print("mix shape", b['audios']['mix'].shape)
+#         print("targets shape", b['audios']['targets'].shape)
+#         res = model(**b, predict_speaker=False)
+
+print("starting")
+model.eval()
+for audio_samples in range(1000, 1100):
+    with torch.no_grad():
+        try:
+            b = {
+                'audios': {
+                    'mix': torch.rand(10, 1, audio_samples).to(device),
+                    'refs': torch.rand(10, 1, audio_samples).to(device),
+                    'targets': torch.rand(10, 1, audio_samples).to(device),
+                }
+            }
+            # print("refs shape", b['audios']['refs'].shape)
+            # print("mix shape", b['audios']['mix'].shape)
+            # print("targets shape", b['audios']['targets'].shape)
+            res = model(**b, predict_speaker=False)
+            print(f"{audio_samples} ok")
+        except Exception:
+            print(f"{audio_samples} fail")
+        # print("-------------------------")
