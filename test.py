@@ -7,10 +7,13 @@ import torch
 from tqdm import tqdm
 
 import hw_asr.model as module_model
+import hw_asr.model as module_arch
 from hw_asr.trainer import Trainer
 from hw_asr.utils import ROOT_PATH
 from hw_asr.utils.object_loading import get_dataloaders
 from hw_asr.utils.parse_config import ConfigParser
+from hw_asr.metric.si_sdr_metric import SiSdrMetric
+from hw_asr.metric.pesq_metric import PESQMetric
 
 DEFAULT_CHECKPOINT_PATH = ROOT_PATH / "default_test_model" / "checkpoint.pth"
 
@@ -21,14 +24,11 @@ def main(config, out_file):
     # define cpu or gpu if possible
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # text_encoder
-    text_encoder = config.get_text_encoder()
-
     # setup data_loader instances
-    dataloaders = get_dataloaders(config, text_encoder)
+    dataloaders = get_dataloaders(config)
 
     # build model architecture
-    model = config.init_obj(config["arch"], module_model, n_class=len(text_encoder))
+    model = config.init_obj(config["arch"], module_arch, n_train_speakers=251) # hardcoded n_train_speakers i used in training
     logger.info(model)
 
     logger.info("Loading checkpoint: {} ...".format(config.resume))
@@ -42,36 +42,29 @@ def main(config, out_file):
     model = model.to(device)
     model.eval()
 
-    results = []
+    results = {'c': [], 'pesq': [], 'si_sdr': []}
 
+    metrics = {
+        'si_sdr': SiSdrMetric(),
+        'pesq': PESQMetric(),
+    }
+
+    torch.cuda.empty_cache()    
     with torch.no_grad():
         for batch_num, batch in enumerate(tqdm(dataloaders["test"])):
             batch = Trainer.move_batch_to_device(batch, device)
-            output = model(**batch)
-            if type(output) is dict:
-                batch.update(output)
-            else:
-                batch["logits"] = output
-            batch["log_probs"] = torch.log_softmax(batch["logits"], dim=-1)
-            batch["log_probs_length"] = model.transform_input_lengths(
-                batch["spectrogram_length"]
-            )
-            batch["probs"] = batch["log_probs"].exp().cpu()
-            batch["argmax"] = batch["probs"].argmax(-1)
-            for i in range(len(batch["text"])):
-                argmax = batch["argmax"][i]
-                argmax = argmax[: int(batch["log_probs_length"][i])]
-                results.append(
-                    {
-                        "ground_trurh": batch["text"][i],
-                        "pred_text_argmax": text_encoder.ctc_decode(argmax.cpu().numpy()),
-                        "pred_text_beam_search": text_encoder.ctc_beam_search(
-                            batch["probs"][i], batch["log_probs_length"][i], beam_size=100
-                        )[:10],
-                    }
-                )
-    with Path(out_file).open("w") as f:
-        json.dump(results, f, indent=2)
+            output = model(predict_speaker=False, **batch)
+            batch.update(output)
+
+            for metr_name, m in metrics.items():
+                results[metr_name].append(m(**batch))
+            results['c'].append(batch['audios']['mix'].shape[0])
+    
+    print("Results:")
+    total = sum([results['c'][i] for i in range(len(results['c']))])
+    for metr_name in metrics.keys():
+        summed = sum([results[metr_name][i] * results['c'][i] for i in range(len(results['c']))])
+        print(f"{metr_name: >10}: {summed / total: .3f}")
 
 
 if __name__ == "__main__":
@@ -147,26 +140,10 @@ if __name__ == "__main__":
     if args.test_data_folder is not None:
         test_data_folder = Path(args.test_data_folder).absolute().resolve()
         assert test_data_folder.exists()
-        config.config["data"] = {
-            "test": {
-                "batch_size": args.batch_size,
-                "num_workers": args.jobs,
-                "datasets": [
-                    {
-                        "type": "CustomDirAudioDataset",
-                        "args": {
-                            "audio_dir": str(test_data_folder / "audio"),
-                            "transcription_dir": str(
-                                test_data_folder / "transcriptions"
-                            ),
-                        },
-                    }
-                ],
-            }
-        }
+        config.config["data"]['test']['datasets'][0]['args']['path'] = str(test_data_folder)
 
     assert config.config.get("data", {}).get("test", None) is not None
-    config["data"]["test"]["batch_size"] = args.batch_size
+    # config["data"]["test"]["batch_size"] = args.batch_size
     config["data"]["test"]["n_jobs"] = args.jobs
 
     main(config, args.output)

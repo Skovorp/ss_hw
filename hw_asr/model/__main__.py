@@ -29,7 +29,6 @@ def move_batch_to_device(batch, device: torch.device):
     batch['audios']['refs'] = batch['audios']['refs'].to(device)
     batch['audios']['targets'] = batch['audios']['targets'].to(device)
     batch['speaker_ids'] = batch['speaker_ids'].to(device)
-
     return batch
 
 config = ConfigParser.from_path('/home/ubuntu/ss_hw/hw_asr/configs/one_batch_test.json')

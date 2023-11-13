@@ -100,6 +100,7 @@ class Trainer(BaseTrainer):
                     batch,
                     is_train=True,
                     metrics=self.train_metrics,
+                    do_step = (batch_idx % 2 == 1)
                 )
             except RuntimeError as e:
                 if "out of memory" in str(e) and self.skip_oom:
@@ -120,7 +121,7 @@ class Trainer(BaseTrainer):
                     )
                 )
                 self.writer.add_scalar(
-                    "learning rate", self.lr_scheduler.get_last_lr()[0]
+                    "learning rate", self.lr_scheduler.optimizer.param_groups[0]['lr']
                 )
                 # self._log_predictions(**batch)
                 # self._log_spectrogram(batch["spectrogram"])
@@ -139,10 +140,11 @@ class Trainer(BaseTrainer):
 
         return log
 
-    def process_batch(self, batch, is_train: bool, metrics: MetricTracker):
+    def process_batch(self, batch, is_train: bool, metrics: MetricTracker, do_step=True):
         batch = self.move_batch_to_device(batch, self.device)
         if is_train:
-            self.optimizer.zero_grad()
+            if do_step == False:
+                self.optimizer.zero_grad()
             outputs = self.model(**batch, predict_speaker=True)
             batch.update(outputs)
         else:
@@ -153,9 +155,8 @@ class Trainer(BaseTrainer):
             batch["loss"] = self.criterion(**batch)
             batch["loss"].backward()
             self._clip_grad_norm()
-            self.optimizer.step()
-            if self.lr_scheduler is not None:
-                self.lr_scheduler.step()
+            if do_step:
+                self.optimizer.step()
             metrics.update("loss", batch["loss"].item())
 
         for met in self.metrics:
@@ -165,7 +166,9 @@ class Trainer(BaseTrainer):
             if met.name == 'speaker acc' and not is_train:
                 continue
             with torch.no_grad():
-                metrics.update(met.name, met(**batch))
+                metric_val = met(**batch)
+                batch[met.name] = metric_val
+                metrics.update(met.name, metric_val)
         return batch
 
     def _evaluation_epoch(self, epoch, part, dataloader):
@@ -188,6 +191,8 @@ class Trainer(BaseTrainer):
                     is_train=False,
                     metrics=self.evaluation_metrics,
                 )
+            if self.lr_scheduler is not None:
+                self.lr_scheduler.step(batch['si_sdr'].item())
             self.writer.set_step(epoch * self.len_epoch, part)
             self._log_scalars(self.evaluation_metrics)
             # self._log_predictions(**batch)

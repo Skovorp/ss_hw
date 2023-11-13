@@ -18,27 +18,27 @@
     "type": "MySpExModel",
     "args": {
       "encoder_params": {
-        "feature_dim": 251,
-        "short_len": 35,
-        "medium_len": 153,
-        "long_len": 329
+        "feature_dim": 256,
+        "short_len": 40,
+        "medium_len": 160,
+        "long_len": 320
       },
       "resnet_params": {
-        "n": 2,
-        "resnet_input_channels": 241,
-        "resnet_hidden_channels": 513
+        "n": 3,
+        "resnet_input_channels": 256,
+        "resnet_hidden_channels": 512
       },
       "tcn_params": {
         "n_stacks": 4,
-        "blocks_in_stack": 4,
-        "tcn_input_channels": 228,
-        "tch_hidden_channels": 555
+        "blocks_in_stack": 8,
+        "tcn_input_channels": 256,
+        "tch_hidden_channels": 512
       }
     }
   },
   "data": {
     "train": {
-      "batch_size": 10,
+      "batch_size": 4,
       "num_workers": 4,
       "datasets": [
         {
@@ -50,7 +50,7 @@
       ]
     },
     "val": {
-      "batch_size": 10,
+      "batch_size": 4,
       "num_workers": 4,
       "datasets": [
         {
@@ -65,7 +65,7 @@
   "optimizer": {
     "type": "Adam",
     "args": {
-      "lr": 1e-3
+      "lr": 2e-3
     }
   },
   "loss": {
@@ -91,13 +91,12 @@
     }
   ],
   "lr_scheduler": {
-    "type": "OneCycleLR",
+    "type": "ReduceLROnPlateau",
     "args": {
-      "steps_per_epoch": 500,
-      "epochs": 50,
-      "anneal_strategy": "cos",
-      "max_lr": 1e-2,
-      "pct_start": 0.2
+      "mode": "max",
+      "factor": 0.5,
+      "patience": 2,
+      "min_lr": 1e-5
     }
   },
   "trainer": {

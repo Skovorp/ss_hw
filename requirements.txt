@@ -22,3 +22,4 @@ pyloudnorm
 torchmetrics
 pesq
 python-dotenv
+gdown

@@ -219,9 +219,9 @@ class MySpExModel(nn.Module):
         medium = F.relu(self.decoder_conv_medium(x)) * y2
         long = F.relu(self.decoder_conv_long(x)) * y3
 
-        print("y1.shape", y1.shape)
-        print("y2.shape", y2.shape)
-        print("y3.shape", y3.shape)
+        # print("y1.shape", y1.shape)
+        # print("y2.shape", y2.shape)
+        # print("y3.shape", y3.shape)
 
         short = self.deconv_short(short)[:, :, :original_len]
         medium = self.deconv_medium(medium)[:, :, :original_len]
